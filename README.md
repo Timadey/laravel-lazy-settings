@@ -24,7 +24,6 @@ Enum-driven settings for Laravel. Use it two ways: **app-global admin settings**
 8. [CLI](#cli)
 9. [API reference](#api-reference)
 10. [UI add-on, tests, license](#ui-add-on-tests-license)
-
 ## Requirements
 
 - PHP ^8.2
@@ -410,11 +409,7 @@ All methods are **static**. `...$scope` is one scope value for a scoped store (e
 
 ## UI add-on, tests, license
 
-- **UI add-on**: install `timadey/laravel-lazy-settings-ui` for admin panels (display names, groups, dropdown options, `structure()`). Core works with or without it — detected automatically via interface checks.
-
-```php
-composer require timadey/laravel-lazy-settings-ui
-```
+- **UI add-on (planned, not yet published)**: a companion package for admin panels (display names, groups, dropdown options, `structure()`) is on the roadmap. Core stays fully functional without it. The optional `Timadey\LazySettings\Contracts\SettingLabels` marker already exists so a future add-on is detected automatically via interface checks.
 
 - **Why not just spatie (the details)?** spatie gives you real PHP property typing, property-level locking, encryption, and versioned data migrations — real wins for app-global settings. This package takes a different trade: the enum *is* the schema (no per-setting migration, one source of truth that can also render an admin panel), and the same schema serves N isolated entities with zero extra tables. You give up native property typing and spatie's migration workflows in exchange for zero-schema-friction and per-entity scoping.
 
