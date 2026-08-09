@@ -1,0 +1,14 @@
+<?php
+
+namespace {{ namespace }};
+
+use Timadey\LazySettings\SettingsStore;
+
+class {{ class }} extends SettingsStore
+{
+    protected static string $table = '{{ table }}';
+
+    protected static string $enum = {{ enum }}::class;
+
+    {{ scope_column }}
+}

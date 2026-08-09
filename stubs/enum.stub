@@ -1,0 +1,16 @@
+<?php
+
+namespace {{ namespace }};
+
+use Timadey\LazySettings\Attributes\Setting;
+use Timadey\LazySettings\Casts\SettingType;
+use Timadey\LazySettings\Concerns\HasSettingAttributes;
+use Timadey\LazySettings\Contracts\SettingKey;
+
+enum {{ enum }}: string implements SettingKey
+{
+    use HasSettingAttributes;
+
+    #[Setting(type: SettingType::String)]
+    case SITE_NAME = 'site_name';
+}
