@@ -3,6 +3,7 @@
 namespace {{ namespace }};
 
 use Timadey\LazySettings\SettingsStore;
+use {{ enum_class }};
 
 class {{ class }} extends SettingsStore
 {

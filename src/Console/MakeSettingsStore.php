@@ -25,6 +25,8 @@ class MakeSettingsStore extends Command
         }
 
         $storePath = $this->storePath($name);
+        $enum = $name . 'Enum';
+        $enumPath = $this->enumPath($enum);
 
         if (File::exists($storePath)) {
             $this->error("Store already exists at [{$storePath}].");
@@ -32,25 +34,51 @@ class MakeSettingsStore extends Command
             return self::FAILURE;
         }
 
+        if (File::exists($enumPath)) {
+            $this->error("Enum already exists at [{$enumPath}].");
+
+            return self::FAILURE;
+        }
+
         $table = $this->tableFor($name);
         $scope = $this->option('scope');
-        $enum = $name . 'Enum';
+        $enumClass = $this->enumNamespace() . '\\' . $enum;
 
         File::ensureDirectoryExists(dirname($storePath));
+        File::ensureDirectoryExists(dirname($enumPath));
 
         File::put(
             $storePath,
-            $this->replaceStub($this->storeStub(), $name, $table, $enum, $scope)
+            $this->replaceStub(
+                $this->storeStub(),
+                $name,
+                $table,
+                $enum,
+                $scope,
+                $this->storeNamespace(),
+                $enumClass
+            )
         );
 
         File::put(
-            File::join(dirname($storePath), $enum . '.php'),
-            $this->replaceStub($this->enumStub(), $enum, $table, $enum, $scope)
+            $enumPath,
+            $this->replaceStub(
+                $this->enumStub(),
+                $enum,
+                $table,
+                $enum,
+                $scope,
+                $this->enumNamespace(),
+                $enumClass
+            )
         );
 
-        (new TableCommand())->forceCreate($table, $scope);
+        $tableCommand = app(TableCommand::class);
+        $tableCommand->setOutput($this->output);
+        $tableCommand->forceCreate($table, $scope);
 
-        $this->info("Settings store [{$name}] and enum [{$enum}] created at " . dirname($storePath) . '.');
+        $this->info("Settings store [{$name}] created at " . dirname($storePath) . '.');
+        $this->info("Enum [{$enum}] created at " . dirname($enumPath) . '.');
         $this->info("Table [{$table}] migration generated.");
 
         return self::SUCCESS;
@@ -65,17 +93,34 @@ class MakeSettingsStore extends Command
 
     protected function storePath(string $name): string
     {
-        $path = trim((string) config('lazy-settings.store_path', 'Models'), '/');
+        $path = str_replace('\\', '/', trim((string) config('lazy-settings.store_path', 'Models'), '/'));
 
         return app_path($path . '/' . $name . '.php');
     }
 
-    protected function namespace(): string
+    protected function enumPath(string $name): string
+    {
+        $path = str_replace('\\', '/', trim((string) config('lazy-settings.enum_path', 'Enums'), '/'));
+
+        return app_path($path . '/' . $name . '.php');
+    }
+
+    protected function storeNamespace(): string
+    {
+        return $this->namespaceFor('store_path', 'Models');
+    }
+
+    protected function enumNamespace(): string
+    {
+        return $this->namespaceFor('enum_path', 'Enums');
+    }
+
+    protected function namespaceFor(string $key, string $default): string
     {
         $root = trim($this->rootNamespace(), '\\');
-        $path = trim((string) config('lazy-settings.store_path', 'Models'), '\\');
+        $path = trim((string) config("lazy-settings.{$key}", $default), '\\');
 
-        return $root . '\\' . $path;
+        return $root . '\\' . str_replace(['/', '\\'], '\\', $path);
     }
 
     protected function rootNamespace(): string
@@ -91,15 +136,23 @@ class MakeSettingsStore extends Command
         return 'App\\';
     }
 
-    protected function replaceStub(string $stub, string $name, string $table, string $enum, ?string $scope): string
-    {
-        $scopeOverride = $scope
+    protected function replaceStub(
+        string $stub,
+        string $name,
+        string $table,
+        string $enum,
+        ?string $scope,
+        string $namespace,
+        ?string $enumClass = null
+    ): string {
+        $scoped = $scope !== null && $scope !== '';
+        $scopeOverride = $scoped
             ? "protected static ?string \$scopeColumn = '{$scope}';"
             : '// protected static ?string $scopeColumn = null; // null = globally scoped';
 
         return str_replace(
-            ['{{ namespace }}', '{{ class }}', '{{ table }}', '{{ enum }}', '{{ scope_column }}'],
-            [$this->namespace(), $name, $table, $enum, $scopeOverride],
+            ['{{ namespace }}', '{{ class }}', '{{ table }}', '{{ enum }}', '{{ enum_class }}', '{{ scope_column }}'],
+            [$namespace, $name, $table, $enum, $enumClass ?? $namespace . '\\' . $enum, $scopeOverride],
             $stub
         );
     }

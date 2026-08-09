@@ -41,7 +41,7 @@ Optionally publish the config:
 php artisan vendor:publish --tag=lazy-settings-config
 ```
 
-> `coerce` disables strict throwing, `store_path` sets where `make:settings-store` writes, `cache` tunes the cache.
+> `coerce` disables strict throwing, `store_path`/`enum_path` set where `make:settings-store` writes stores and enums, `cache` tunes the cache.
 
 ### Config & per-store overrides
 
@@ -51,6 +51,7 @@ Every config key can be overridden on an individual store — the store-level ov
 | ------------- | ---------- | ------------------------------------------------ |
 | `coerce`      | `false`    | `protected static bool $coerce = true;`          |
 | `store_path`  | `Models`   | *(codegen only — no store override)*             |
+| `enum_path`   | `Enums`    | *(codegen only — no store override)*             |
 | `cache.store` | `null`     | `protected static ?string $cacheStore = 'redis';`|
 | `cache.ttl`   | `864000`   | `protected static int $cacheTtl = 60;`           |
 
@@ -73,7 +74,8 @@ class PlatformSettings extends SettingsStore
 ```php
 return [
     'coerce' => false,          // best-effort coercion instead of throwing
-    'store_path' => 'Models',   // where make:settings-store writes (relative to app/)
+    'store_path' => 'Models',   // where make:settings-store writes stores (relative to app/)
+    'enum_path' => 'Enums',     // where make:settings-store writes enums (relative to app/)
 
     'cache' => [
         'store' => null,       // null = the app default cache store
@@ -92,10 +94,10 @@ Build an app-global settings store for a settings page. Two commands, one enum, 
 php artisan make:settings-store PlatformSettings
 ```
 
-This creates `app/Models/PlatformSettings.php` and `app/Models/PlatformSettingsEnum.php`. Fill the enum cases:
+This creates `app/Models/PlatformSettings.php` and `app/Enums/PlatformSettingsEnum.php`. Fill the enum cases:
 
 ```php
-namespace App\Models;
+namespace App\Enums;
 
 use Timadey\LazySettings\Attributes\Setting;
 use Timadey\LazySettings\Casts\SettingType;
@@ -132,8 +134,8 @@ enum PlatformSettingsEnum: string implements SettingKey
 Read and write — no scope argument anywhere:
 
 ```php
+use App\Enums\PlatformSettingsEnum;
 use App\Models\PlatformSettings;
-use App\Models\PlatformSettingsEnum;
 
 // Read
 PlatformSettings::get(PlatformSettingsEnum::MAINTENANCE_MODE);      // true
@@ -158,6 +160,7 @@ The quick start is the global case end-to-end. This section shows the details yo
 ```php
 namespace App\Models;
 
+use App\Enums\PlatformSettingsEnum;
 use Timadey\LazySettings\SettingsStore;
 
 class PlatformSettings extends SettingsStore
@@ -186,8 +189,8 @@ Schema::create('platform_settings', function (Blueprint $table) {
 
 The one command produces three files, fully wired so it works out of the box:
 
-- **Store** — extends `Timadey\LazySettings\SettingsStore`, sets `$table` and `$enum`. `$scopeColumn` is set when you pass `--scope=`, otherwise written as a **commented** line (`// protected static ?string $scopeColumn = null;`) so the global intent is visible. The optional overrides (`$coerce`, `$cacheStore`, `$cacheTtl`) aren't written — add them yourself per the table above.
-- **Enum** — imports `Setting`, `SettingType`, `HasSettingAttributes`, and `SettingKey`; includes `use HasSettingAttributes;` and one starter case you replace with your own schema.
+- **Store** — `app/Models/<Name>.php`, extends `Timadey\LazySettings\SettingsStore`, sets `$table` and `$enum` (importing the enum, since it lives in the `Enums` namespace). `$scopeColumn` is set when you pass `--scope=`, otherwise written as a **commented** line (`// protected static ?string $scopeColumn = null;`) so the global intent is visible. The optional overrides (`$coerce`, `$cacheStore`, `$cacheTtl`) aren't written — add them yourself per the table above.
+- **Enum** — `app/Enums/<Name>Enum.php`, imports `Setting`, `SettingType`, `HasSettingAttributes`, and `SettingKey`; includes `use HasSettingAttributes;` and one starter case you replace with your own schema. Both `store_path` and `enum_path` config keys control where each file goes (defaults `Models` / `Enums`).
 - **Migration** — the full table above; `unique(['key'])` for global, `unique([scope, 'key'])` for scoped.
 
 ### Render and save a settings form
@@ -228,6 +231,9 @@ php artisan make:settings-store UserPreferences --scope=user_id
 The store now reads and writes through `user_id`:
 
 ```php
+use App\Enums\UserPreferencesEnum;
+use Timadey\LazySettings\SettingsStore;
+
 class UserPreferences extends SettingsStore
 {
     protected static string $table = 'user_preferences_settings';
@@ -248,8 +254,8 @@ $table->unique(['user_id', 'key']);
 Read and write now take the scope value (`$userId`) as the trailing argument:
 
 ```php
+use App\Enums\UserPreferencesEnum;
 use App\Models\UserPreferences;
-use App\Models\UserPreferencesEnum;
 
 UserPreferences::set(UserPreferencesEnum::THEME, 'dark', 1);
 UserPreferences::get(UserPreferencesEnum::THEME, 1); // 'dark'

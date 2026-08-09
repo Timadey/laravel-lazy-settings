@@ -20,9 +20,19 @@ return [
     | Store location
     |--------------------------------------------------------------------------
     | Relative app path (or namespace segment) where make:settings-store writes
-    | new store classes and enums.
+    | new store classes.
     */
     'store_path' => 'Models',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Enum location
+    |--------------------------------------------------------------------------
+    | Relative app path (or namespace segment) where make:settings-store writes
+    | new setting enums. Kept separate from store_path so codegen matches a
+    | typical app layout: stores in App\Models, enums in App\Enums.
+    */
+    'enum_path' => 'Enums',
 
     'cache' => [
         /*
