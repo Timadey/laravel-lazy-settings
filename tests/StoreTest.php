@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Timadey\LazySettings\Tests\Fixtures\CoerciveTestStore;
+use Timadey\LazySettings\Tests\Fixtures\NoTimestampsStore;
 use Timadey\LazySettings\Tests\Fixtures\ScopedTestStore;
 use Timadey\LazySettings\Tests\Fixtures\TestSettings;
 use Timadey\LazySettings\Tests\Fixtures\TestStore;
@@ -129,4 +130,39 @@ it('uses distinct cache keys per scope', function () {
 
     ScopedTestStore::set(TestSettings::SITE_NAME, 'Two', 2);
     expect(Cache::has($keyTwo))->toBeFalse();
+});
+
+it('stamps created_at and updated_at on first insert', function () {
+    TestStore::set(TestSettings::SITE_NAME, 'Acme Corp');
+
+    $row = DB::table('test_settings')->where('key', 'site_name')->first();
+
+    expect($row->created_at)->not->toBeNull();
+    expect($row->updated_at)->not->toBeNull();
+    expect($row->created_at)->toBe($row->updated_at);
+});
+
+it('bumps updated_at but preserves created_at on update', function () {
+    TestStore::set(TestSettings::SITE_NAME, 'Acme Corp');
+
+    $first = DB::table('test_settings')->where('key', 'site_name')->first();
+    $beforeCreated = $first->created_at;
+    $beforeUpdated = $first->updated_at;
+
+    $this->travel(1)->hour();
+    TestStore::set(TestSettings::SITE_NAME, 'New Corp');
+
+    $second = DB::table('test_settings')->where('key', 'site_name')->first();
+
+    expect($second->created_at)->toBe($beforeCreated);
+    expect($second->updated_at)->toBeGreaterThan($beforeUpdated);
+});
+
+it('leaves timestamps null when the store opts out', function () {
+    NoTimestampsStore::set(TestSettings::SITE_NAME, 'Acme Corp');
+
+    $row = DB::table('test_settings')->where('key', 'site_name')->first();
+
+    expect($row->created_at)->toBeNull();
+    expect($row->updated_at)->toBeNull();
 });

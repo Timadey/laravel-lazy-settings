@@ -71,6 +71,13 @@ trait LazySettings
     protected static ?string $cacheStore = null;
 
     /**
+     * Whether to maintain created_at/updated_at on insert and updated_at on
+     * update. Disable for tables that predate the package's timestamps
+     * migration columns.
+     */
+    protected static bool $timestamps = true;
+
+    /**
      * Get a typed setting by enum, falling back to the (cast) declared default.
      */
     public static function get(SettingKey $setting, ...$scope): mixed
@@ -179,7 +186,10 @@ trait LazySettings
         $result = static::table(...$scope)
             ->updateOrInsert(
                 static::identityFor($key->value, ...$scope),
-                ['value' => static::encrypt($key, $stored)]
+                fn (bool $exists) => array_merge(
+                    ['value' => static::encrypt($key, $stored)],
+                    static::timestampsFor($exists)
+                )
             );
 
         static::flushCache(...$scope);
@@ -203,7 +213,10 @@ trait LazySettings
         $result = static::table(...$scope)
             ->updateOrInsert(
                 static::identityFor($key, ...$scope),
-                ['value' => static::encrypt($case, $stored)]
+                fn (bool $exists) => array_merge(
+                    ['value' => static::encrypt($case, $stored)],
+                    static::timestampsFor($exists)
+                )
             );
 
         static::flushCache(...$scope);
@@ -241,6 +254,25 @@ trait LazySettings
     public static function isStrict(): bool
     {
         return ! config('lazy-settings.coerce', false) && ! static::$coerce;
+    }
+
+    /**
+     * Timestamp columns to persist for the given write. Fresh rows stamp both
+     * created_at and updated_at; existing rows only bump updated_at so the
+     * original created_at is preserved. Returns an empty array when the store
+     * opts out of timestamp maintenance.
+     */
+    protected static function timestampsFor(bool $exists): array
+    {
+        if (! static::$timestamps) {
+            return [];
+        }
+
+        $now = now();
+
+        return $exists
+            ? ['updated_at' => $now]
+            : ['created_at' => $now, 'updated_at' => $now];
     }
 
     /**

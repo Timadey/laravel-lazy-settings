@@ -65,8 +65,12 @@ class PlatformSettings extends SettingsStore
     protected static bool $coerce = true;                    // strict -> coerce
     protected static ?string $cacheStore = 'redis';          // use redis, not the app default
     protected static int $cacheTtl = 60;                     // 60s instead of 10 days
+
+    // protected static bool $timestamps = false;            // legacy table w/o timestamp columns
 }
 ```
+
+Stores maintain `created_at`/`updated_at` by default: fresh writes stamp both, later writes bump `updated_at` while preserving `created_at`. Point a store at a table missing those columns by setting `protected static bool $timestamps = false;`.
 
 <details>
 <summary>Published config</summary>
