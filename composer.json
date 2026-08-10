@@ -1,7 +1,7 @@
 {
     "name": "timadey/laravel-lazy-settings",
     "description": "Enum-driven, per-scope settings for Laravel with lazy persistence: definitions live in an enum, values are only stored when changed, reads fall back to declared defaults.",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "keywords": ["laravel", "settings", "config", "enums", "scoped", "lazy"],
     "license": "MIT",
     "type": "library",

@@ -181,20 +181,12 @@ trait LazySettings
     {
         static::validateSchema();
 
-        $stored = ValueCaster::toStorage($key, $value, static::isStrict());
-
-        $result = static::table(...$scope)
-            ->updateOrInsert(
-                static::identityFor($key->value, ...$scope),
-                fn (bool $exists) => array_merge(
-                    ['value' => static::encrypt($key, $stored)],
-                    static::timestampsFor($exists)
-                )
-            );
-
-        static::flushCache(...$scope);
-
-        return $result;
+        return static::persist(
+            $key->value,
+            $key,
+            ValueCaster::toStorage($key, $value, static::isStrict()),
+            ...$scope
+        );
     }
 
     /**
@@ -210,18 +202,7 @@ trait LazySettings
             ? ValueCaster::toStorage($case, $value, static::isStrict())
             : (string) $value;
 
-        $result = static::table(...$scope)
-            ->updateOrInsert(
-                static::identityFor($key, ...$scope),
-                fn (bool $exists) => array_merge(
-                    ['value' => static::encrypt($case, $stored)],
-                    static::timestampsFor($exists)
-                )
-            );
-
-        static::flushCache(...$scope);
-
-        return $result;
+        return static::persist($key, $case, $stored, ...$scope);
     }
 
     /**
@@ -254,6 +235,30 @@ trait LazySettings
     public static function isStrict(): bool
     {
         return ! config('lazy-settings.coerce', false) && ! static::$coerce;
+    }
+
+    /**
+     * Insert or update a single setting row and bust the cache.
+     *
+     * Mirrors Query\Builder::updateOrInsert() (and its Laravel 11+ closure
+     * form) while staying compatible with Laravel 10, where $values must be
+     * an array. Returns whether the write applied, matching updateOrInsert.
+     */
+    protected static function persist(string $identityKey, ?SettingKey $case, ?string $stored, ...$scope): bool
+    {
+        $identity = static::identityFor($identityKey, ...$scope);
+        $query = static::table(...$scope);
+        $exists = (clone $query)->where($identity)->exists();
+
+        $values = array_merge(['value' => static::encrypt($case, $stored)], static::timestampsFor($exists));
+
+        $result = $exists
+            ? $query->where($identity)->limit(1)->update($values)
+            : $query->insert(array_merge($identity, $values));
+
+        static::flushCache(...$scope);
+
+        return (bool) $result;
     }
 
     /**
