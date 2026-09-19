@@ -4,6 +4,12 @@ All notable changes to `timadey/laravel-lazy-settings` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3] - 2026-09-18
+
+### Added
+
+- Laravel 13 support: added `^13.0` constraints to all illuminate packages and `^11.0` to `orchestra/testbench`.
+
 ## [0.1.2] - 2026-08-10
 
 ### Fixed
